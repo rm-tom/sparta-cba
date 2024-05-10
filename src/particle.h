@@ -67,6 +67,10 @@ class Particle : protected Pointers {
   int nmixture;
   int maxmixture;
 
+  int cbaflag;           // 1 if cba is fixed
+  char *cbaid;            // name of fixid
+  class Fix **cbafix;    // Fix that contains fixcba 
+
   struct SPARTA_ALIGN(64) OnePart {
     int id;                 // particle ID
     int ispecies;           // particle species index

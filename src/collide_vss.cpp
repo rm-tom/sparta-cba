@@ -28,6 +28,7 @@
 #include "math_const.h"
 #include "memory.h"
 #include "error.h"
+#include "fix_cba.h"
 
 using namespace SPARTA_NS;
 using namespace MathConst;
@@ -138,14 +139,32 @@ double CollideVSS::attempt_collision(int icell, int np, double volume)
   double dt = update->dt;
 
   double nattempt;
+  double YFac = 1;
+
+  // Process to calculate Y Factor:
+  if (particle->cbaflag){
+    double b2n,dmean;
+    double nrho = np*fnum/volume;
+    dmean = 0;  
+    for(int i = 0; i<nparams;i++){
+      dmean += params[i][i].diam;
+    }
+    dmean /= nparams;
+    b2n = (2/3.0) * MY_PI * dmean * dmean * dmean * nrho;
+    YFac = (1+0.05556782*b2n + 0.01394451*b2n*b2n - 0.0013396*b2n*b2n*b2n)/
+            (1 - 0.56943218*b2n + 0.08289011*b2n*b2n);
+
+  }else{
+    YFac = 1;
+  }
 
   if (remainflag) {
     nattempt = 0.5 * np * (np-1) *
-      vremax[icell][0][0] * dt * fnum / volume + remain[icell][0][0];
+      vremax[icell][0][0] * dt * fnum * YFac / volume + remain[icell][0][0];
     remain[icell][0][0] = nattempt - static_cast<int> (nattempt);
   } else {
     nattempt = 0.5 * np * (np-1) *
-      vremax[icell][0][0] * dt * fnum / volume + random->uniform();
+      vremax[icell][0][0] * dt * fnum * YFac / volume + random->uniform();
   }
 
   return nattempt;
@@ -408,6 +427,12 @@ void CollideVSS::SCATTER_TwoBodyScattering(Particle::OnePart *ip,
     }
   }
 
+  // For CBA calculation
+  double vrc_init[3], vrc_final[3];
+  vrc_init[0] = vi[0] - vj[0];
+  vrc_init[1] = vi[1] - vj[1];
+  vrc_init[2] = vi[2] - vj[2];
+
   // new velocities for the products
 
   double divisor = 1.0 / (mass_i + mass_j);
@@ -417,6 +442,15 @@ void CollideVSS::SCATTER_TwoBodyScattering(Particle::OnePart *ip,
   vj[0] = precoln.ucmf - (mass_i*divisor)*ua;
   vj[1] = precoln.vcmf - (mass_i*divisor)*vb;
   vj[2] = precoln.wcmf - (mass_i*divisor)*wc;
+
+  // For CBA calculation
+  vrc_final[0] = vi[0] - vj[0];
+  vrc_final[1] = vi[1] - vj[1];
+  vrc_final[2] = vi[2] - vj[2];
+
+  if(particle->cbaflag){
+    particle->cbafix[0]->add_dvel(ip,jp,vrc_init,vrc_final,params[isp][jsp].diam);
+  }
 }
 
 /* ---------------------------------------------------------------------- */

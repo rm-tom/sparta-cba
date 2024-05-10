@@ -30,6 +30,7 @@
 #include "math_const.h"
 #include "math_extra.h"
 #include "error.h"
+#include "fix.h" // For CBA
 
 using namespace SPARTA_NS;
 using namespace MathConst;
@@ -219,6 +220,7 @@ void SurfCollideDiffuse::diffuse(Particle::OnePart *p, double *norm)
 
   if (random->uniform() > acc) {
     MathExtra::reflect3(p->v,norm);
+    if (particle->cbaflag) particle->cbafix[0]->collide_dvel(p,norm, (char *) "specular");
 
   // diffuse reflection
   // vrm = most probable speed of species, eqns (4.1) and (4.7)
@@ -306,6 +308,8 @@ void SurfCollideDiffuse::diffuse(Particle::OnePart *p, double *norm)
       v[1] = vperp*norm[1] + vtan1*tangent1[1] + vtan2*tangent2[1];
       v[2] = vperp*norm[2] + vtan1*tangent1[2] + vtan2*tangent2[2];
     }
+
+    if (particle->cbaflag) particle->cbafix[0]->collide_dvel(p,norm, (char *) "diffuse");
 
     // initialize rot/vib energy
 

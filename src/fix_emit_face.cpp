@@ -30,6 +30,7 @@
 #include "math_const.h"
 #include "memory.h"
 #include "error.h"
+#include "collide.h" // For CBA
 
 using namespace SPARTA_NS;
 using namespace MathConst;
@@ -409,10 +410,27 @@ void FixEmitFace::create_task(int icell)
     // skip task if final ntarget = 0.0, due to large outbound vstream
     // do not skip for subsonic since it resets ntarget every step
 
+    // Adjusting ntargetsp if CBA exists
+    double cbafac = 1.0;
+    int *mspecies = particle->mixture[imix]->species;
+
     tasks[ntask].ntarget = 0.0;
     for (isp = 0; isp < nspecies; isp++) {
+
+      if (particle->cbaflag){
+        double term1, term2, sig;
+        sig = collide->extract(mspecies[isp],mspecies[isp],"diam");
+        term1 = 1.0 + 2.0/3.0*MY_PI*sig*sig*sig*nrho;
+        term2 = 1.0/(1.0-2.0/3.0*MY_PI*sig*sig*sig*nrho);
+        cbafac = term1;
+
+      }else{
+        cbafac = 1.0;
+      }
+
+
       ntargetsp = mol_inflow(indot,vscale[isp],fraction[isp]);
-      ntargetsp *= nrho*area*dt / fnum;
+      ntargetsp *= nrho*area*dt*cbafac / fnum;
       ntargetsp /= cinfo[icell].weight;
       tasks[ntask].ntarget += ntargetsp;
       if (perspecies) tasks[ntask].ntargetsp[isp] = ntargetsp;

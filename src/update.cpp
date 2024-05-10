@@ -141,6 +141,11 @@ void Update::set_units(const char *style)
     mvv2e = 1.0;
     dt = 1.0;
 
+  }else if (strcmp(style,"si_nm") == 0) { // For CBA (well not exactly)
+    boltz = 1.380649e-5;
+    mvv2e = 1.0;
+    dt = 1.0;
+
   } else error->all(FLERR,"Illegal units command");
 
   delete [] unit_style;
@@ -320,6 +325,10 @@ void Update::run(int nsteps)
     if (cellweightflag) particle->post_weight();
     timer->stamp(TIME_COMM);
 
+    // Reset CBA velocities
+    if(particle->cbaflag)
+      particle->cbafix[0]->init();
+
     if (collide) {
       particle->sort();
       timer->stamp(TIME_SORT);
@@ -452,6 +461,27 @@ template < int DIM, int SURF, int OPT > void Update::move()
       //   set pflag to PKEEP so move the particle on this step
       // else do nothing
 
+      // Get cba stuff
+      double *vcba;
+      if(particle->cbaflag){
+        if(particle->cbafix){
+          int pindex = &particles[i] - particle->particles;
+          vcba = particle->cbafix[0]->return_vel(pindex);  
+        }else{
+          error->one(FLERR, "CBA Fix is not found in update.cpp");  
+        }
+
+      }
+      else{
+        double dummy[3];
+        vcba = dummy;
+        vcba[0] = 0.0;
+        vcba[1] = 0.0;
+        vcba[2] = 0.0;
+      }
+
+
+
       if (pflag == PDONE) {
         pflag = particles[i].flag = PKEEP;
         if (niterate > 1) continue;
@@ -468,16 +498,16 @@ template < int DIM, int SURF, int OPT > void Update::move()
 
       if (pflag == PKEEP) {
         dtremain = dt;
-        xnew[0] = x[0] + dtremain*v[0];
-        xnew[1] = x[1] + dtremain*v[1];
-        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2];
+        xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+        xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
         if (perturbflag)
           (this->*moveperturb)(i,particles[i].icell,dtremain,xnew,v);
       } else if (pflag == PINSERT) {
         dtremain = particles[i].dtremain;
-        xnew[0] = x[0] + dtremain*v[0];
-        xnew[1] = x[1] + dtremain*v[1];
-        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2];
+        xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+        xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
         if (perturbflag)
           (this->*moveperturb)(i,particles[i].icell,dtremain,xnew,v);
       } else if (pflag == PENTRY) {
@@ -488,19 +518,19 @@ template < int DIM, int SURF, int OPT > void Update::move()
           particles[i].icell = icell;
         }
         dtremain = particles[i].dtremain;
-        xnew[0] = x[0] + dtremain*v[0];
-        xnew[1] = x[1] + dtremain*v[1];
-        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2];
+        xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+        xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
       } else if (pflag == PEXIT) {
         dtremain = particles[i].dtremain;
-        xnew[0] = x[0] + dtremain*v[0];
-        xnew[1] = x[1] + dtremain*v[1];
-        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2];
+        xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+        xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
       } else if (pflag >= PSURF) {
         dtremain = particles[i].dtremain;
-        xnew[0] = x[0] + dtremain*v[0];
-        xnew[1] = x[1] + dtremain*v[1];
-        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2];
+        xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+        xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+        if (DIM != 2) xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
         if (pflag > PSURF) exclude = pflag - PSURF - 1;
       }
 
@@ -936,8 +966,8 @@ template < int DIM, int SURF, int OPT > void Update::move()
 
               // reset post-bounce xnew
 
-              xnew[0] = x[0] + dtremain*v[0];
-              xnew[1] = x[1] + dtremain*v[1];
+              xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+              xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
               if (DIM != 2) xnew[2] = x[2] + dtremain*v[2];
 
               exclude = minsurf;
@@ -1053,9 +1083,9 @@ template < int DIM, int SURF, int OPT > void Update::move()
         else if (outface == ZHI) x[2] = hi[2];
 
         if (DIM == 1) {
-          xnew[0] = x[0] + dtremain*v[0];
-          xnew[1] = x[1] + dtremain*v[1];
-          xnew[2] = x[2] + dtremain*v[2];
+          xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+          xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+          xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
         }
 
         // nflag = type of neighbor cell: child, parent, unknown, boundary
@@ -1128,9 +1158,9 @@ template < int DIM, int SURF, int OPT > void Update::move()
                 boundary_tally(outface,bflag,reaction,&iorig,ipart,jpart);
 
           if (DIM == 1) {
-            xnew[0] = x[0] + dtremain*v[0];
-            xnew[1] = x[1] + dtremain*v[1];
-            xnew[2] = x[2] + dtremain*v[2];
+            xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+            xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+            xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
           }
 
           if (bflag == OUTFLOW) {

@@ -23,6 +23,7 @@
 #include "react.h"
 #include "modify.h"
 #include "fix.h"
+#include "fix_cba.h"
 #include "fix_ambipolar.h"
 #include "random_mars.h"
 #include "random_knuth.h"
@@ -103,6 +104,10 @@ Collide::Collide(SPARTA *sparta, int, char **arg) : Pointers(sparta)
   ncollide_running = nattempt_running = nreact_running = 0;
 
   copymode = kokkos_flag = 0;
+
+
+  xcmax = 0;    // For conditional ncollision_increments.
+  xcmin = 0;    // For conditional ncollision_increments.
 }
 
 /* ---------------------------------------------------------------------- */
@@ -380,6 +385,13 @@ void Collide::modify_params(int narg, char **arg)
         error->all(FLERR,"Illegal collide_modify command");
       iarg += 3;
 
+    } else if (strcmp(arg[iarg],"xclims") == 0) {
+      if (iarg+3 > narg) error->all(FLERR,"Illegal collide_modify command");
+      xcmin = atoi(arg[iarg+1]);
+      xcmax = atoi(arg[iarg+2]);
+      fprintf(screen, "\n Added Xclims of %f %f",xcmin, xcmax);
+      iarg += 3;
+
     } else error->all(FLERR,"Illegal collide_modify command");
   }
 }
@@ -461,8 +473,10 @@ template < int NEARCP > void Collide::collisions_one()
   Particle::OnePart *ipart,*jpart,*kpart;
 
   // loop over cells I own
-
   Grid::ChildInfo *cinfo = grid->cinfo;
+
+  // conditional ncollision_increments
+  Grid::ChildCell *cells = grid->cells;
 
   Particle::OnePart *particles = particle->particles;
   int *next = particle->next;
@@ -478,8 +492,9 @@ template < int NEARCP > void Collide::collisions_one()
 
     ip = cinfo[icell].first;
     volume = cinfo[icell].volume / cinfo[icell].weight;
-    if (volume == 0.0) error->one(FLERR,"Collision cell volume is zero");
-
+    if (volume == 0.0) {
+      //error->warning(FLERR,"Collision cell volume is zero");
+    }
     // setup particle list for this cell
 
     if (np > npmax) {
@@ -552,6 +567,13 @@ template < int NEARCP > void Collide::collisions_one()
       setup_collision(ipart,jpart);
       reactflag = perform_collision(ipart,jpart,kpart);
       ncollide_one++;
+
+      // conditional ncollision_increments
+      double xc = (cells[icell].lo[0]+cells[icell].hi[0])/2.0;
+      if (xc > xcmin && xc <xcmax){
+          nreact_one++;
+      }
+
       if (reactflag) nreact_one++;
       else continue;
 

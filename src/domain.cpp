@@ -27,6 +27,8 @@
 #include "comm.h"
 #include "memory.h"
 #include "error.h"
+#include "fix.h"      // For CBA
+#include "modify.h"   // For CBA
 
 using namespace SPARTA_NS;
 
@@ -350,6 +352,7 @@ int Domain::collide(Particle::OnePart *&ip, int face, int icell, double *xnew,
         v[dim] = -v[dim];
       }
 
+      if (particle->cbaflag) particle->cbafix[0]->collide_dvel(ip, norm[face],(char *) "specular");
       return REFLECT;
     }
 
@@ -368,9 +371,23 @@ int Domain::collide(Particle::OnePart *&ip, int face, int icell, double *xnew,
       if (ip) {
         double *x = ip->x;
         double *v = ip->v;
-        xnew[0] = x[0] + dtremain*v[0];
-        xnew[1] = x[1] + dtremain*v[1];
-        if (dimension == 3) xnew[2] = x[2] + dtremain*v[2];
+        double *vcba;
+
+        if (particle->cbaflag){
+          int pindex = ip - particle->particles;
+          vcba = particle->cbafix[0]->return_vel(pindex);
+        }
+        else{
+          double dummy[3];
+          vcba = dummy;
+          vcba[0] = 0.0;
+          vcba[1] = 0.0;
+          vcba[2] = 0.0;
+        }
+        xnew[0] = x[0] + dtremain*v[0] + dtremain*vcba[0];
+        xnew[1] = x[1] + dtremain*v[1] + dtremain*vcba[1];
+        if (dimension == 3) xnew[2] = x[2] + dtremain*v[2] + dtremain*vcba[2];
+
       }
 
       return SURFACE;

@@ -30,6 +30,7 @@ class Fix : protected Pointers {
   int flag_update_custom;         // 0/1 if has update_custom() method
   int flag_gas_react;            // 0/1 if has gas_react() method
   int flag_surf_react;           // 0/1 if has surf_react() method
+  int flag_cba;                  // 0/1 if this fix invokes CBA velocities
 
   int scalar_flag;               // 0/1 if compute_scalar() function exists
   int vector_flag;               // 0/1 if compute_vector() function exists
@@ -85,6 +86,12 @@ class Fix : protected Pointers {
   virtual void gas_react(int) {}
   virtual void surf_react(Particle::OnePart *, int &, int &) {}
   virtual void compute_field() {}
+
+  // For cba fox (next four)
+  virtual void add_dvel(Particle::OnePart *, Particle::OnePart *,double *, double *, double) {}
+  virtual double* return_vel(int){return NULL;}
+  virtual void collide_dvel(Particle::OnePart*, double *,char *){}
+  virtual void init_dvel(Particle::OnePart*){}
 
   virtual int pack_grid_one(int, char *, int) {return 0;}
   virtual int unpack_grid_one(int, char *) {return 0;}

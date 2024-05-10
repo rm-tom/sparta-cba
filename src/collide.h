@@ -127,6 +127,8 @@ class Collide : protected Pointers {
                          //   base class when child copy is destroyed)
   int kokkos_flag;        // 1 if collide method supports Kokkos
 
+  double xcmax, xcmin;    // For conditional ncollision_increments.
+
   // inline functions
   // add particle N to Igroup and set its g2p entry in plist to K
   // delete Ith entry in Igroup and reset g2p entries as well

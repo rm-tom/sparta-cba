@@ -28,6 +28,7 @@
 #include "random_knuth.h"
 #include "memory.h"
 #include "error.h"
+#include "modify.h"     // For CBA
 
 using namespace SPARTA_NS;
 
@@ -101,6 +102,10 @@ Particle::Particle(SPARTA *sparta) : Pointers(sparta)
   wrandom = NULL;
 
   copy = uncopy = copymode = 0;
+
+  cbaflag = 0;      // Initializing CBA
+  cbafix = NULL;    // Initializing CBA Fix
+  cbaid = NULL;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -108,6 +113,8 @@ Particle::Particle(SPARTA *sparta) : Pointers(sparta)
 Particle::~Particle()
 {
   if (!uncopy && (copy || copymode)) return;
+
+  if (cbafix) delete [] cbafix;
 
   memory->sfree(species);
   for (int i = 0; i < nmixture; i++) delete mixture[i];
@@ -175,6 +182,17 @@ void Particle::init()
                 species[isp].id);
         error->all(FLERR,str);
       }
+    }
+  }
+
+  //Initialize CBA Fix
+  if (cbaflag){
+    int icba = modify->find_fix(cbaid);
+    if (icba>=0){
+      cbaflag = 1;
+      cbafix = new Fix*[0];
+      cbafix[0] = modify->fix[icba];
+      fprintf(screen, "\n CBA Fix initialized");
     }
   }
 
@@ -648,6 +666,12 @@ int Particle::add_particle(int id, int ispecies, int icell,
 
   //p->dtremain = 0.0;    not needed due to memset in grow() ??
   //p->weight = 1.0;      not needed due to memset in grow() ??
+
+  if(cbaflag){
+    if (cbafix)
+      cbafix[0]->init_dvel(p);
+  }
+
 
   if (ncustom) zero_custom(nlocal);
 
