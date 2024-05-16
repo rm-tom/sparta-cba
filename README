@@ -40,3 +40,17 @@ doc/Manual.html	           the SPARTA manual
 doc/Section_intro.html	   hi-level introduction to SPARTA
 doc/Section_start.html	   how to build and use SPARTA
 doc/Developer.pdf          SPARTA developer guide
+
+
+----------------------------------------------------------------------
+
+Updates by Me
+
+1) CBA can be added by adding a line "fix cba cba" before creating any particles
+2) A nanoscale unit where length is measured in nanometers can be optionally used
+   by settings the units to "si_nm"
+3) The nreact counter for collisions can be overwritten by xcmin and xcmax values.
+   These values count the collisions between a specific values on the x direction. 
+   To enable this, use the keyword "xclims" with 2 arguments that describe the 
+   two ends where the collision are to be counted. 
+   e.g.: collide_modify xclims 300 500

@@ -568,14 +568,20 @@ template < int NEARCP > void Collide::collisions_one()
       reactflag = perform_collision(ipart,jpart,kpart);
       ncollide_one++;
 
-      // conditional ncollision_increments
-      double xc = (cells[icell].lo[0]+cells[icell].hi[0])/2.0;
-      if (xc > xcmin && xc <xcmax){
-          nreact_one++;
+      if(xcmin == xcmax){
+        // If xcmin and xcmax are equal (which mean no cells are added or if they are uninitialized then continue as normal)
+        if (reactflag) nreact_one++;
+        else continue;
+      }
+      else{
+        // conditional ncollision_increments
+        double xc = (cells[icell].lo[0]+cells[icell].hi[0])/2.0;
+        if (xc > xcmin && xc <xcmax){
+          nreact_one++;      
+        }
       }
 
-      if (reactflag) nreact_one++;
-      else continue;
+      
 
       // if jpart destroyed: delete from plist, add particle to deletion list
       // exit attempt loop if only single particle left
